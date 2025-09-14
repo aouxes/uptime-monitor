@@ -96,3 +96,51 @@ async function deleteSite(siteId) {
 if (currentToken) {
     loadSites();
 }
+
+document.getElementById('bulk-add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const textarea = document.getElementById('bulk-sites');
+    const urlsText = textarea.value.trim();
+    
+    if (!urlsText) {
+        alert('Введите список сайтов');
+        return;
+    }
+
+    const urls = urlsText.split('\n')
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+
+    if (urls.length === 0) {
+        alert('Не найдено валидных URL');
+        return;
+    }
+
+    if (urls.length > 50) {
+        alert('Максимум 50 сайтов за раз');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/sites/bulk', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + currentToken
+            },
+            body: JSON.stringify({ urls })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            textarea.value = '';
+            alert(`Добавлено ${result.success} из ${result.total} сайтов`);
+            loadSites(); // Обновляем список
+        } else {
+            alert('Ошибка при массовом добавлении сайтов');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
