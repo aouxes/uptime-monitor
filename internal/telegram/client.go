@@ -112,12 +112,12 @@ func (c *Client) SendSiteStatusNotification(ctx context.Context, chatID int64, s
 		"%s <b>%s</b>\n\n"+
 			"🌐 <b>Сайт:</b> %s\n"+
 			"📊 <b>Статус:</b> %s\n"+
-			"⏰ <b>Время:</b> %s",
+			"⏰ <b>Время:</b> %s UTC",
 		emoji,
 		statusText,
 		siteURL,
 		newStatus,
-		time.Now().Format("15:04:05 02.01.2006"),
+		time.Now().UTC().Format("15:04:05 02.01.2006"),
 	)
 
 	return c.SendMessage(ctx, chatID, message)

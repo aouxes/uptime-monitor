@@ -286,12 +286,100 @@
         const command = `/link ${code}`;
         console.log('Copying command:', command);
         
-        navigator.clipboard.writeText(command).then(() => {
-            console.log('Command copied successfully');
-            showToast('Команда скопирована в буфер обмена', 'success');
-        }).catch((err) => {
-            console.error('Failed to copy command:', err);
-            showToast('Не удалось скопировать команду', 'error');
+        // Проверяем доступность Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            // Используем современный Clipboard API
+            navigator.clipboard.writeText(command).then(() => {
+                console.log('Command copied successfully');
+                showToast('Команда скопирована в буфер обмена', 'success');
+            }).catch((err) => {
+                console.error('Failed to copy command:', err);
+                // Fallback к старому методу
+                fallbackCopyToClipboard(command);
+            });
+        } else {
+            // Fallback для старых браузеров или небезопасных контекстов
+            fallbackCopyToClipboard(command);
+        }
+    }
+    
+    function fallbackCopyToClipboard(text) {
+        try {
+            // Создаем временный textarea элемент
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            
+            // Выделяем и копируем текст
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                console.log('Command copied successfully (fallback)');
+                showToast('Команда скопирована в буфер обмена', 'success');
+            } else {
+                throw new Error('execCommand failed');
+            }
+        } catch (err) {
+            console.error('Failed to copy command (fallback):', err);
+            // Последний fallback - показываем текст для ручного копирования
+            showManualCopyDialog(text);
+        }
+    }
+    
+    function showManualCopyDialog(text) {
+        // Создаем модальное окно с текстом для ручного копирования
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        `;
+        
+        content.innerHTML = `
+            <h3>Скопируйте команду вручную</h3>
+            <p>Автоматическое копирование недоступно. Выделите и скопируйте команду ниже:</p>
+            <textarea readonly style="width: 100%; height: 60px; margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace;">${text}</textarea>
+            <button onclick="this.closest('.modal-overlay').remove()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Закрыть</button>
+        `;
+        
+        modal.className = 'modal-overlay';
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        // Автоматически выделяем текст в textarea
+        const textarea = content.querySelector('textarea');
+        textarea.focus();
+        textarea.select();
+        
+        // Закрытие по клику вне модального окна
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
         });
     }
 
