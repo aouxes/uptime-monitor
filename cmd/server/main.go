@@ -21,24 +21,23 @@ func main() {
 	userHandler := handlers.NewUserHandler(db)
 	siteHandler := handlers.NewSiteHandler(db)
 
-	http.HandleFunc("POST /api/register", userHandler.Register)
-	http.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /api/register", userHandler.Register)
+	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 		userHandler.Login(w, r, cfg.JWTSecret)
 	})
 
-	protected := http.NewServeMux()
-	protected.HandleFunc("POST /api/sites", siteHandler.AddSite)
-	protected.HandleFunc("GET /api/sites", siteHandler.GetSites)
+	mux.Handle("POST /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.AddSite)))
+	mux.Handle("GET /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.GetSites)))
 
-	http.Handle("/api/", middleware.AuthMiddleware(cfg.JWTSecret)(protected))
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<h1>Uptime Monitor API</h1>"))
-		w.Write([]byte("<p>Endpoints: POST /api/register, POST /api/login, POST /api/sites</p>"))
+		w.Write([]byte("<p>Endpoints: POST /api/register, POST /api/login, POST /api/sites, GET /api/sites</p>"))
 	})
 
 	log.Printf("Server starting on :%s...", cfg.ServerPort)
-	if err := http.ListenAndServe(":"+cfg.ServerPort, nil); err != nil {
+	if err := http.ListenAndServe(":"+cfg.ServerPort, mux); err != nil {
 		log.Fatalf("Server startup failed: %v", err)
 	}
 }
