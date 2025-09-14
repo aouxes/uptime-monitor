@@ -87,31 +87,61 @@
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/sites.js"></script>
     <script>
-        // Функции для управления страницами
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById(pageId).classList.add('active');
+    let currentToken = localStorage.getItem('token');
+    
+    // Функции для управления страницами
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    function logout() {
+        currentToken = null;
+        localStorage.removeItem('token');
+        showPage('login-page');
+        showToast('Вы вышли из системы', 'info');
+    }
+
+    // Проверка токена при загрузке
+    async function checkAuth() {
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+            showPage('login-page');
+            return;
         }
 
-        function logout() {
-            currentToken = null;
+        try {
+            const response = await fetch('/api/verify-token', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            if (response.ok) {
+                // Токен валидный, показываем дашборд
+                currentToken = token;
+                showPage('dashboard-page');
+                if (typeof loadSites === 'function') {
+                    loadSites();
+                }
+                showToast('Добро пожаловать!', 'success');
+            } else {
+                // Токен невалидный, очищаем и показываем логин
+                localStorage.removeItem('token');
+                showPage('login-page');
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
             localStorage.removeItem('token');
             showPage('login-page');
-            showToast('Вы вышли из системы', 'info');
         }
+    }
 
-        // Проверяем авторизацию при загрузке
-        let currentToken = localStorage.getItem('token');
-        if (currentToken) {
-            showPage('dashboard-page');
-            if (typeof loadSites === 'function') {
-                loadSites();
-            }
-        } else {
-            showPage('login-page');
-        }
-    </script>
+    // Запускаем проверку при загрузке
+    checkAuth();
+</script>
 </body>
 </html>

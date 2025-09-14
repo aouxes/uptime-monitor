@@ -58,6 +58,9 @@ func main() {
 	mux.Handle("GET /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.GetSites)))
 	mux.Handle("DELETE /api/sites/", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.DeleteSite)))
 	mux.Handle("POST /api/sites/bulk-delete", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.BulkDeleteSites)))
+	mux.Handle("GET /api/verify-token", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userHandler.VerifyToken(w, r, cfg.JWTSecret)
+	})))
 
 	// Graceful shutdown
 	server := &http.Server{

@@ -156,6 +156,11 @@ input, textarea, button {
     font-size: 14px;
 }
 
+textarea{
+    min-height: 50px;
+    resize: vertical;
+}
+
 input, textarea {
     width: 100%;
     padding: 12px;

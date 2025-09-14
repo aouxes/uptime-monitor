@@ -1,3 +1,22 @@
+async function fetchWithAuth(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            'Authorization': 'Bearer ' + currentToken
+        }
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        showToast('Сессия истекла', 'error');
+        showPage('login-page');
+        throw new Error('Authentication failed');
+    }
+
+    return response;
+}
+
 let currentToken = localStorage.getItem('token');
 
 function showPage(pageId) {
@@ -80,4 +99,22 @@ if (currentToken) {
     loadSites();
 } else {
     showPage('login-page');
+}
+
+async function loadSites() {
+    try {
+        const response = await fetchWithAuth('/api/sites', {
+            headers: {
+                'Authorization': 'Bearer ' + currentToken
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            displaySites(data.sites);
+        }
+    } catch (error) {
+        console.error('Error loading sites:', error);
+        showToast('Ошибка загрузки сайтов', 'error');
+    }
 }

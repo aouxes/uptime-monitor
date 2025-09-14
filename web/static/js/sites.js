@@ -1,3 +1,22 @@
+async function fetchWithAuth(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            'Authorization': 'Bearer ' + currentToken
+        }
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        showToast('Сессия истекла', 'error');
+        showPage('login-page');
+        throw new Error('Authentication failed');
+    }
+
+    return response;
+}
+
 let lastChecked = null;
 let selectedSites = new Set();
 
@@ -98,7 +117,7 @@ async function deleteSelectedSites() {
     if (selectedSites.size === 0) return;
     
     try {
-        const response = await fetch('/api/sites/bulk-delete', {
+        const response = await fetchWithAuth('/api/sites/bulk-delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -124,7 +143,7 @@ async function deleteSelectedSites() {
 // Удаление одиночного сайта
 async function deleteSite(siteId) {
     try {
-        const response = await fetch(`/api/sites/${siteId}`, {
+        const response = await fetchWithAuth(`/api/sites/${siteId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': 'Bearer ' + currentToken
@@ -145,7 +164,7 @@ async function deleteSite(siteId) {
 // Загрузка сайтов
 async function loadSites() {
     try {
-        const response = await fetch('/api/sites', {
+        const response = await fetchWithAuth('/api/sites', {
             headers: {
                 'Authorization': 'Bearer ' + currentToken
             }
@@ -183,7 +202,7 @@ document.getElementById('bulk-add-form').addEventListener('submit', async (e) =>
     }
 
     try {
-        const response = await fetch('/api/sites/bulk', {
+        const response = await fetchWithAuth('/api/sites/bulk', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -212,7 +231,7 @@ document.getElementById('add-site-form').addEventListener('submit', async (e) =>
     const url = document.getElementById('site-url').value;
 
     try {
-        const response = await fetch('/api/sites', {
+        const response = await fetchWithAuth('/api/sites', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

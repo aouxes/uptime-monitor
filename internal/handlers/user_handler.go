@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/aouxes/uptime-monitor/internal/models"
 	"github.com/aouxes/uptime-monitor/internal/storage"
@@ -120,5 +121,48 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request, jwtSecret st
 			"username": user.Username,
 			"email":    user.Email,
 		},
+	})
+}
+
+func (h *UserHandler) VerifyToken(w http.ResponseWriter, r *http.Request, jwtSecret string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		return
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		http.Error(w, "Invalid authorization format", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := parts[1]
+
+	// Используем нашу утилиту для проверки JWT
+	claims, err := utils.ParseJWT(tokenString, jwtSecret)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// Можно дополнительно проверить существование пользователя в БД
+	ctx := context.Background()
+	user, err := h.storage.GetUserByUsername(ctx, claims.Subject)
+	if err != nil || user == nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"valid":    true,
+		"user_id":  claims.UserID,
+		"username": claims.Subject,
 	})
 }
