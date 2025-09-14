@@ -8,6 +8,7 @@ import (
 
 	"github.com/aouxes/uptime-monitor/internal/models"
 	"github.com/aouxes/uptime-monitor/internal/storage"
+	"github.com/aouxes/uptime-monitor/internal/utils"
 )
 
 type UserHandler struct {
@@ -36,11 +37,29 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Добавить валидацию и хеширование пароля!
+	// Валидация данных
+	if errors := utils.ValidateUser(req.Username, req.Email, req.Password); len(errors) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":   "Validation failed",
+			"details": errors,
+		})
+		return
+	}
+
+	// Хеширование пароля
+	hashedPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		log.Printf("Password hashing failed: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	user := &models.User{
 		Username:     req.Username,
 		Email:        req.Email,
-		PasswordHash: "hashed_" + req.Password, // Временная заглушка
+		PasswordHash: hashedPassword, // Теперь храним хеш!
 	}
 
 	ctx := context.Background()

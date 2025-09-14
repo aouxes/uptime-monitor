@@ -17,10 +17,13 @@ func main() {
 	}
 	defer db.Close()
 
+	// Создаем обработчики
 	userHandler := handlers.NewUserHandler(db)
 
+	// Настраиваем роутинг
 	http.HandleFunc("POST /api/register", userHandler.Register)
 
+	// Старый обработчик для проверки работы
 	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<h1>Uptime Monitor API</h1>"))
 		w.Write([]byte("<p>Use POST /api/register to create user</p>"))
