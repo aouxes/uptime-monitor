@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: uptime-monitor-db
+    environment:
+      POSTGRES_DB: uptimedb
+      POSTGRES_USER: monitoruser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitoruser -d uptimedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - uptime-network
+
+  app:
+    build: .
+    container_name: uptime-monitor-app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: uptimedb
+      DB_USER: monitoruser
+      DB_PASSWORD: ${DB_PASSWORD}
+      SERVER_PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - uptime-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: uptime-monitor-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - uptime-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  uptime-network:
+    driver: bridge
