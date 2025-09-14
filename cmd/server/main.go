@@ -24,29 +24,39 @@ func main() {
 	}
 	defer db.Close()
 
+	// Создаем и запускаем checker с 20 workers
 	checker := checker.New(db, 5*time.Minute, 20)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go checker.Start(ctx)
 
+	// Создаем обработчики
 	userHandler := handlers.NewUserHandler(db)
 	siteHandler := handlers.NewSiteHandler(db)
 
 	mux := http.NewServeMux()
+
+	// Обслуживаем статические файлы (CSS, JS)
+	fs := http.FileServer(http.Dir("web/static"))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Обслуживаем HTML шаблон
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/templates/index.html")
+	})
+
+	// API endpoints
 	mux.HandleFunc("POST /api/register", userHandler.Register)
 	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 		userHandler.Login(w, r, cfg.JWTSecret)
 	})
+
+	// Защищенные endpoints (требуют JWT)
 	mux.Handle("POST /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.AddSite)))
 	mux.Handle("GET /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.GetSites)))
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<h1>Uptime Monitor API</h1>"))
-		w.Write([]byte("<p>Endpoints: POST /api/register, POST /api/login, POST /api/sites, GET /api/sites</p>"))
-		w.Write([]byte("<p>Background checker is running every 5 minutes</p>"))
-	})
-
+	// Graceful shutdown
 	server := &http.Server{
 		Addr:    ":" + cfg.ServerPort,
 		Handler: mux,
@@ -54,16 +64,19 @@ func main() {
 
 	go func() {
 		log.Printf("Server starting on :%s...", cfg.ServerPort)
+		log.Printf("Web UI available at: http://localhost:%s", cfg.ServerPort)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server startup failed: %v", err)
 		}
 	}()
 
+	// Ожидаем сигнал для graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Printf("Shutting down server...")
 
+	// Останавливаем checker и сервер
 	cancel()
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Fatalf("Server shutdown failed: %v", err)
