@@ -6,6 +6,7 @@ import (
 
 	"github.com/aouxes/uptime-monitor/internal/config"
 	"github.com/aouxes/uptime-monitor/internal/handlers"
+	"github.com/aouxes/uptime-monitor/internal/middleware"
 	"github.com/aouxes/uptime-monitor/internal/storage"
 )
 
@@ -18,15 +19,21 @@ func main() {
 	defer db.Close()
 
 	userHandler := handlers.NewUserHandler(db)
+	siteHandler := handlers.NewSiteHandler(db)
 
 	http.HandleFunc("POST /api/register", userHandler.Register)
 	http.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 		userHandler.Login(w, r, cfg.JWTSecret)
 	})
 
-	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	protected := http.NewServeMux()
+	protected.HandleFunc("POST /api/sites", siteHandler.AddSite)
+
+	http.Handle("/api/", middleware.AuthMiddleware(cfg.JWTSecret)(protected))
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<h1>Uptime Monitor API</h1>"))
-		w.Write([]byte("<p>Use POST /api/register to create user</p>"))
+		w.Write([]byte("<p>Endpoints: POST /api/register, POST /api/login, POST /api/sites</p>"))
 	})
 
 	log.Printf("Server starting on :%s...", cfg.ServerPort)
