@@ -135,6 +135,14 @@ async function refreshSites() {
 
 // Отображение сайтов
 function displaySites(sites) {
+    console.log('Displaying sites:', sites);
+    
+    // Проверяем, что sites является массивом
+    if (!Array.isArray(sites)) {
+        console.error('Sites is not an array:', sites);
+        sites = [];
+    }
+    
     allSites = sites;
     const container = document.getElementById('sites-container');
     
@@ -150,12 +158,25 @@ function displaySites(sites) {
         } else {
             container.innerHTML = '<div class="no-sites">Нет добавленных сайтов</div>';
         }
-        document.getElementById('bulk-actions').classList.remove('visible');
-        document.getElementById('select-all-checkbox').disabled = true;
+        
+        // Проверяем, что элементы существуют перед обращением к ним
+        const bulkActions = document.getElementById('bulk-actions');
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        
+        if (bulkActions) {
+            bulkActions.classList.remove('visible');
+        }
+        if (selectAllCheckbox) {
+            selectAllCheckbox.disabled = true;
+        }
         return;
     }
 
-    document.getElementById('select-all-checkbox').disabled = false;
+    // Проверяем, что элемент существует перед обращением к нему
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.disabled = false;
+    }
 
     container.innerHTML = filteredSites.map(site => `
         <div class="site-item ${selectedSites.has(site.id) ? 'selected' : ''}" 
@@ -253,12 +274,17 @@ function updateBulkActions() {
     const bulkActions = document.getElementById('bulk-actions');
     const selectedCount = document.getElementById('selected-count');
     
-    selectedCount.textContent = selectedSites.size;
+    // Проверяем, что элементы существуют перед обращением к ним
+    if (selectedCount) {
+        selectedCount.textContent = selectedSites.size;
+    }
     
-    if (selectedSites.size > 0) {
-        bulkActions.classList.add('visible');
-    } else {
-        bulkActions.classList.remove('visible');
+    if (bulkActions) {
+        if (selectedSites.size > 0) {
+            bulkActions.classList.add('visible');
+        } else {
+            bulkActions.classList.remove('visible');
+        }
     }
     
     updateSelectAllCheckbox();
@@ -270,6 +296,8 @@ async function deleteSelectedSites() {
     
     try {
         const siteIds = Array.from(selectedSites);
+        console.log('Deleting sites:', siteIds);
+        
         const response = await fetchWithAuth('/api/sites/bulk-delete', {
             method: 'POST',
             headers: {
@@ -278,20 +306,40 @@ async function deleteSelectedSites() {
             body: JSON.stringify({ site_ids: siteIds })
         });
 
+        console.log('Delete response status:', response.status);
+        
         if (response.ok) {
             const result = await response.json();
+            console.log('Delete result:', result);
             showToast(`Удалено ${result.success} из ${result.total} сайтов`, 'success');
             
             // Сбрасываем selection
             selectedSites.clear();
             lastChecked = null;
             
+            // Обновляем панель массовых действий
+            updateBulkActions();
+            
             // Перезагружаем список
-            loadSites();
+            console.log('Reloading sites after delete...');
+            try {
+                await loadSites();
+                console.log('Sites reloaded successfully');
+            } catch (reloadError) {
+                console.error('Error reloading sites:', reloadError);
+                // Если ошибка при перезагрузке, просто очищаем контейнер
+                const container = document.getElementById('sites-container');
+                if (container) {
+                    container.innerHTML = '<div class="no-sites">Нет добавленных сайтов</div>';
+                }
+            }
         } else {
+            const errorText = await response.text();
+            console.error('Delete failed:', response.status, errorText);
             showToast('Ошибка при массовом удалении', 'error');
         }
     } catch (error) {
+        console.error('Delete error:', error);
         if (error.message !== 'Authentication failed') {
             showToast('Ошибка сети', 'error');
         }
@@ -328,13 +376,28 @@ async function deleteSite(siteId) {
 // Загрузка сайтов
 async function loadSites() {
     try {
+        console.log('Loading sites...');
         const response = await fetchWithAuth('/api/sites');
+        console.log('Load sites response status:', response.status);
         
         if (response.ok) {
             const data = await response.json();
-            displaySites(data.sites);
+            console.log('Loaded sites data:', data);
+            
+            // Проверяем, что data.sites существует и является массивом
+            if (data && Array.isArray(data.sites)) {
+                displaySites(data.sites);
+            } else {
+                console.warn('Invalid sites data:', data);
+                displaySites([]);
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Load sites failed:', response.status, errorText);
+            showToast('Ошибка загрузки сайтов', 'error');
         }
     } catch (error) {
+        console.error('Load sites error:', error);
         if (error.message !== 'Authentication failed') {
             showToast('Ошибка загрузки сайтов', 'error');
         }

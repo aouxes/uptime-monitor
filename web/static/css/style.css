@@ -137,6 +137,18 @@ body {
     gap: 12px;
 }
 
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.user-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 14px;
+}
+
 .telegram-btn {
     background: #0088cc;
     color: white;
@@ -366,6 +378,23 @@ button:hover {
 
 /* Адаптивность */
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .user-name {
+        font-size: 13px;
+    }
+    
     .site-item {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto;

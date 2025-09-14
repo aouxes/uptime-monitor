@@ -75,11 +75,25 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const data = await response.json();
             currentToken = data.token;
             localStorage.setItem('token', data.token);
+            
+            // Сохраняем информацию о пользователе
+            if (data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user));
+                updateUserName(data.user.username);
+            }
+            
             showToast('Вход выполнен успешно', 'success');
             showPage('dashboard-page');
             if (typeof loadSites === 'function') {
                 loadSites();
             }
+            
+            // Запускаем автоматическое обновление через 30 секунд после логина
+            setTimeout(() => {
+                if (typeof startAutoRefresh === 'function') {
+                    startAutoRefresh();
+                }
+            }, 30000); // 30 секунд
         } else {
             showToast('Неверный логин или пароль', 'error');
         }
@@ -88,10 +102,28 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     }
 });
 
+// Обновление имени пользователя в интерфейсе
+function updateUserName(username) {
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) {
+        userNameElement.textContent = username;
+    }
+}
+
 // Выход
 function logout() {
     currentToken = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Сбрасываем имя пользователя
+    updateUserName('Пользователь');
+    
+    // Останавливаем автоматическое обновление
+    if (typeof stopAutoRefresh === 'function') {
+        stopAutoRefresh();
+    }
+    
     showPage('login-page');
 }
 
@@ -121,15 +153,36 @@ async function checkAuth() {
             // Токен валидный, показываем дашборд
             console.log('Token is valid, showing dashboard');
             currentToken = token;
+            
+            // Восстанавливаем имя пользователя из localStorage
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    updateUserName(user.username);
+                } catch (e) {
+                    console.error('Failed to parse user data:', e);
+                }
+            }
+            
             showPage('dashboard-page');
             if (typeof loadSites === 'function') {
                 loadSites();
             }
             showToast('Добро пожаловать!', 'success');
+            
+            // Запускаем автоматическое обновление через 30 секунд после проверки авторизации
+            setTimeout(() => {
+                if (typeof startAutoRefresh === 'function') {
+                    startAutoRefresh();
+                }
+            }, 30000); // 30 секунд
         } else {
             // Токен невалидный, очищаем и показываем логин
             console.log('Token is invalid, clearing and showing login');
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            updateUserName('Пользователь');
             showPage('login-page');
         }
     } catch (error) {
