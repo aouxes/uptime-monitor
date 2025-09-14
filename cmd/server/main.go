@@ -55,6 +55,7 @@ func main() {
 	// Защищенные endpoints (требуют JWT)
 	mux.Handle("POST /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.AddSite)))
 	mux.Handle("GET /api/sites", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.GetSites)))
+	mux.Handle("DELETE /api/sites/", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(siteHandler.DeleteSite)))
 
 	// Graceful shutdown
 	server := &http.Server{

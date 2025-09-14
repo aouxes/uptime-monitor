@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -91,4 +92,53 @@ func (h *SiteHandler) GetSites(w http.ResponseWriter, r *http.Request) {
 		"sites": sites,
 		"count": len(sites),
 	})
+}
+
+func (h *SiteHandler) DeleteSite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем ID сайта из URL пути /api/sites/{id}
+	siteID, err := getSiteIDFromRequest(r)
+	if err != nil {
+		http.Error(w, "Invalid site ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	if err := h.storage.DeleteSite(ctx, siteID, userID); err != nil {
+		log.Printf("Failed to delete site: %v", err)
+		http.Error(w, "Failed to delete site", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Site deleted successfully",
+		"site_id": siteID,
+	})
+}
+
+// Вспомогательная функция для получения ID сайта из URL
+func getSiteIDFromRequest(r *http.Request) (int, error) {
+	// Извлекаем ID из пути /api/sites/123
+	path := r.URL.Path
+	idStr := path[len("/api/sites/"):]
+
+	// Преобразуем строку в число
+	var siteID int
+	_, err := fmt.Sscanf(idStr, "%d", &siteID)
+	if err != nil {
+		return 0, err
+	}
+
+	return siteID, nil
 }

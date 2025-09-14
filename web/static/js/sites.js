@@ -43,7 +43,7 @@ async function loadSites() {
     }
 }
 
-// Отображение сайтов
+// Отображение сайтов с кнопкой удаления
 function displaySites(sites) {
     const container = document.getElementById('sites-container');
     
@@ -54,13 +54,45 @@ function displaySites(sites) {
 
     container.innerHTML = sites.map(site => `
         <div class="site-item ${site.last_status === 'DOWN' ? 'down' : 'up'}">
-            <div>
+            <div class="site-info">
                 <strong>${site.url}</strong>
                 <div class="site-status ${site.last_status?.toLowerCase() || 'unknown'}">
                     Статус: ${site.last_status || 'UNKNOWN'}
                 </div>
+                <small>Последняя проверка: ${new Date(site.last_checked).toLocaleString()}</small>
             </div>
-            <div>${new Date(site.last_checked).toLocaleString()}</div>
+            <div class="site-actions">
+                <button class="delete-btn" onclick="deleteSite(${site.id})">Удалить</button>
+            </div>
         </div>
     `).join('');
+}
+
+// Удаление сайта
+async function deleteSite(siteId) {
+    if (!confirm('Удалить этот сайт из мониторинга?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/sites/${siteId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + currentToken
+            }
+        });
+
+        if (response.ok) {
+            alert('Сайт удален');
+            loadSites(); // Перезагружаем список
+        } else {
+            alert('Ошибка при удалении сайта');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+
+if (currentToken) {
+    loadSites();
 }
