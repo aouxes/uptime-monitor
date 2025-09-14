@@ -2,6 +2,7 @@
 .env.local
 .env.*.local
 *.env
+
 secrets.yml
 config.yml
 
@@ -16,3 +17,5 @@ go.sum
 
 .vscode/
 .idea/
+
+!.env.example
