@@ -96,3 +96,36 @@ func (s *Storage) DeleteSite(ctx context.Context, siteID, userID int) error {
 	log.Printf("Site deleted: ID=%d, UserID=%d", siteID, userID)
 	return nil
 }
+
+func (s *Storage) GetAllSites(ctx context.Context) ([]models.Site, error) {
+	query := `
+        SELECT id, url, user_id, last_status, last_checked, created_at
+        FROM sites 
+        ORDER BY last_checked ASC NULLS FIRST
+    `
+
+	rows, err := s.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all sites: %w", err)
+	}
+	defer rows.Close()
+
+	var sites []models.Site
+	for rows.Next() {
+		var site models.Site
+		err := rows.Scan(
+			&site.ID,
+			&site.URL,
+			&site.UserID,
+			&site.LastStatus,
+			&site.LastChecked,
+			&site.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan site: %w", err)
+		}
+		sites = append(sites, site)
+	}
+
+	return sites, nil
+}
