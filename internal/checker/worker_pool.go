@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aouxes/uptime-monitor/internal/models"
+	"github.com/aouxes/uptime-monitor/internal/notifier"
 	"github.com/aouxes/uptime-monitor/internal/storage"
 )
 
@@ -15,13 +16,15 @@ type WorkerPool struct {
 	storage      *storage.Storage
 	maxWorkers   int
 	checkTimeout time.Duration
+	notifier     *notifier.Notifier
 }
 
-func NewWorkerPool(storage *storage.Storage, maxWorkers int) *WorkerPool {
+func NewWorkerPool(storage *storage.Storage, maxWorkers int, notifier *notifier.Notifier) *WorkerPool {
 	return &WorkerPool{
 		storage:      storage,
 		maxWorkers:   maxWorkers,
 		checkTimeout: 15 * time.Second,
+		notifier:     notifier,
 	}
 }
 
@@ -67,6 +70,9 @@ func (wp *WorkerPool) processSite(ctx context.Context, site models.Site, workerI
 
 	log.Printf("Worker %d: Checking site %s", workerID, site.URL)
 
+	// Сохраняем старый статус для сравнения
+	oldStatus := site.LastStatus
+
 	// Вызываем статический метод CheckSite
 	status, err := CheckSite(ctx, site.URL)
 	if err != nil {
@@ -80,8 +86,16 @@ func (wp *WorkerPool) processSite(ctx context.Context, site models.Site, workerI
 		log.Printf("Worker %d: Site %s is %s", workerID, site.URL, status)
 	}
 
+	// Обновляем статус в базе данных
 	if err := wp.storage.UpdateSiteStatus(ctx, site.ID, status); err != nil {
 		log.Printf("Worker %d: Failed to update site %s status: %v", workerID, site.URL, err)
+	} else {
+		// Отправляем уведомление если статус изменился
+		if oldStatus != status {
+			if err := wp.notifier.NotifySiteStatusChange(ctx, site.ID, oldStatus, status); err != nil {
+				log.Printf("Worker %d: Failed to send notification for site %s: %v", workerID, site.URL, err)
+			}
+		}
 	}
 }
 

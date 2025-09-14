@@ -42,7 +42,10 @@
         <div id="dashboard-page" class="page">
             <header class="header">
                 <h1>Uptime Monitor</h1>
-                <button class="logout-btn" onclick="logout()">Выйти</button>
+                <div class="header-actions">
+                    <button class="telegram-btn" onclick="showTelegramSettings()">📱 Telegram</button>
+                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                </div>
             </header>
 
             <div class="dashboard-content">
@@ -99,15 +102,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- Модальное окно настроек Telegram -->
+        <div id="telegram-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📱 Настройки Telegram</h3>
+                    <button class="modal-close" onclick="closeTelegramSettings()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="telegram-status" class="telegram-status">
+                        <p>Проверяем статус подключения...</p>
+                    </div>
+                    
+                    <div id="telegram-link-section" class="telegram-link-section" style="display: none;">
+                        <h4>Связывание аккаунта</h4>
+                        <p>Для получения уведомлений о статусе сайтов:</p>
+                        <ol>
+                            <li>Найдите бота <code>@aouxesbot</code> в Telegram</li>
+                            <li>Отправьте команду <code>/start</code></li>
+                            <li>Нажмите кнопку ниже для получения кода</li>
+                            <li>Отправьте команду <code>/link ваш_код</code> боту</li>
+                        </ol>
+                        
+                        <button id="generate-link-btn" class="btn-primary" onclick="generateTelegramLink()">
+                            Получить код связывания
+                        </button>
+                        
+                        <div id="link-code-display" class="link-code-display" style="display: none;">
+                            <p><strong>Ваш код:</strong></p>
+                            <div class="code-box">
+                                <code id="link-code"></code>
+                                <button class="copy-btn" onclick="copyLinkCode()">Копировать</button>
+                            </div>
+                            <p class="code-expires">Код действителен 10 минут</p>
+                        </div>
+                    </div>
+                    
+                    <div id="telegram-unlink-section" class="telegram-unlink-section" style="display: none;">
+                        <h4>Аккаунт связан</h4>
+                        <p>Ваш аккаунт успешно связан с Telegram ботом.</p>
+                        <button class="btn-danger" onclick="unlinkTelegram()">Отвязать аккаунт</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/toast.js"></script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/sites.js"></script>
     <script>
-    let currentToken = localStorage.getItem('token');
+    // currentToken уже объявлен в auth.js
     
-    // Функции для управления страницами
+    // Функции для управления страницами (дублированные из auth.js удалены)
     function showPage(pageId) {
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
@@ -115,51 +163,156 @@
         document.getElementById(pageId).classList.add('active');
     }
 
-    function logout() {
-        currentToken = null;
-        localStorage.removeItem('token');
-        showPage('login-page');
-        showToast('Вы вышли из системы', 'info');
+    // Telegram функции (определяем глобально)
+    window.showTelegramSettings = function() {
+        console.log('showTelegramSettings called');
+        const modal = document.getElementById('telegram-modal');
+        console.log('Modal element:', modal);
+        modal.style.display = 'flex';
+        checkTelegramStatus();
+    };
+
+    window.closeTelegramSettings = function() {
+        document.getElementById('telegram-modal').style.display = 'none';
     }
 
-    // Проверка токена при загрузке
-    async function checkAuth() {
-        const token = localStorage.getItem('token');
+    function checkTelegramStatus() {
+        console.log('checkTelegramStatus called');
+        // Здесь можно добавить проверку статуса связывания
+        // Пока просто показываем секцию для связывания
+        document.getElementById('telegram-status').style.display = 'none';
+        document.getElementById('telegram-link-section').style.display = 'block';
         
+        // Проверяем, что элементы существуют
+        const linkSection = document.getElementById('telegram-link-section');
+        const generateBtn = document.getElementById('generate-link-btn');
+        console.log('Link section:', linkSection);
+        console.log('Generate button:', generateBtn);
+    }
+
+    async function generateTelegramLink() {
+        console.log('generateTelegramLink called');
+        
+        // Проверяем авторизацию
+        const token = localStorage.getItem('token');
         if (!token) {
-            showPage('login-page');
+            console.error('No token found');
+            showToast('Необходимо войти в систему', 'error');
             return;
         }
+        console.log('Token found:', token.substring(0, 20) + '...');
+        
+        const btn = document.getElementById('generate-link-btn');
+        if (!btn) {
+            console.error('Generate button not found');
+            showToast('Кнопка не найдена', 'error');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = 'Генерируем код...';
 
         try {
-            const response = await fetch('/api/verify-token', {
+            console.log('Sending request to /api/telegram/link-code');
+            console.log('Current token:', token.substring(0, 20) + '...');
+            
+            const response = await fetch('/api/telegram/link-code', {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 }
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
             if (response.ok) {
-                // Токен валидный, показываем дашборд
-                currentToken = token;
-                showPage('dashboard-page');
-                if (typeof loadSites === 'function') {
-                    loadSites();
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                const codeElement = document.getElementById('link-code');
+                const displayElement = document.getElementById('link-code-display');
+                
+                console.log('Code element:', codeElement);
+                console.log('Display element:', displayElement);
+                
+                if (codeElement && displayElement) {
+                    codeElement.textContent = data.code;
+                    displayElement.style.display = 'block';
+                    console.log('Code set to:', data.code);
+                    console.log('Display element style:', displayElement.style.display);
+                    showToast(data.message, 'success');
+                } else {
+                    console.error('Code elements not found');
+                    console.error('Available elements:', document.querySelectorAll('[id*="link"]'));
+                    showToast('Элементы кода не найдены', 'error');
                 }
-                showToast('Добро пожаловать!', 'success');
             } else {
-                // Токен невалидный, очищаем и показываем логин
-                localStorage.removeItem('token');
-                showPage('login-page');
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                console.error('Response status:', response.status);
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    showToast('Сессия истекла, необходимо войти заново', 'error');
+                    showPage('login-page');
+                } else {
+                    showToast('Ошибка при генерации кода: ' + response.status, 'error');
+                }
             }
         } catch (error) {
-            console.error('Auth check failed:', error);
-            localStorage.removeItem('token');
-            showPage('login-page');
+            console.error('Network error:', error);
+            console.error('Error details:', error.message);
+            showToast('Ошибка сети: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Получить код связывания';
         }
     }
 
-    // Запускаем проверку при загрузке
-    checkAuth();
+    function copyLinkCode() {
+        const codeElement = document.getElementById('link-code');
+        if (!codeElement) {
+            console.error('Code element not found for copying');
+            showToast('Элемент кода не найден', 'error');
+            return;
+        }
+        
+        const code = codeElement.textContent;
+        const command = `/link ${code}`;
+        console.log('Copying command:', command);
+        
+        navigator.clipboard.writeText(command).then(() => {
+            console.log('Command copied successfully');
+            showToast('Команда скопирована в буфер обмена', 'success');
+        }).catch((err) => {
+            console.error('Failed to copy command:', err);
+            showToast('Не удалось скопировать команду', 'error');
+        });
+    }
+
+    function unlinkTelegram() {
+        if (confirm('Отвязать аккаунт от Telegram? Вы больше не будете получать уведомления.')) {
+            // Здесь можно добавить API для отвязывания
+            showToast('Функция отвязывания будет добавлена в следующей версии', 'info');
+        }
+    }
+
+    // Закрытие модального окна при клике вне его
+    document.getElementById('telegram-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeTelegramSettings();
+        }
+    });
+
+    // Инициализация при загрузке DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        console.log('showTelegramSettings function:', typeof window.showTelegramSettings);
+        console.log('closeTelegramSettings function:', typeof window.closeTelegramSettings);
+        // checkAuth() уже вызывается в auth.js
+    });
 </script>
 </body>
 </html>

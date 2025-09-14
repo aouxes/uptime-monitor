@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aouxes/uptime-monitor/internal/models"
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Storage) CreateSite(ctx context.Context, site *models.Site) error {
@@ -66,6 +67,33 @@ func (s *Storage) GetUserSites(ctx context.Context, userID int) ([]models.Site, 
 	return sites, nil
 }
 
+func (s *Storage) GetSiteByID(ctx context.Context, siteID int) (*models.Site, error) {
+	query := `
+        SELECT id, url, user_id, last_status, last_checked, created_at
+        FROM sites 
+        WHERE id = $1
+    `
+
+	var site models.Site
+	err := s.db.QueryRow(ctx, query, siteID).Scan(
+		&site.ID,
+		&site.URL,
+		&site.UserID,
+		&site.LastStatus,
+		&site.LastChecked,
+		&site.CreatedAt,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get site: %w", err)
+	}
+
+	return &site, nil
+}
+
 func (s *Storage) UpdateSiteStatus(ctx context.Context, siteID int, status string) error {
 	query := `
         UPDATE sites 
@@ -81,7 +109,7 @@ func (s *Storage) UpdateSiteStatus(ctx context.Context, siteID int, status strin
 	return nil
 }
 
-func (s *Storage) DeleteSite(ctx context.Context, siteID, userID int) error {
+func (s *Storage) DeleteSite(ctx context.Context, siteID int, userID int) error {
 	query := `DELETE FROM sites WHERE id = $1 AND user_id = $2`
 
 	result, err := s.db.Exec(ctx, query, siteID, userID)

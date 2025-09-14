@@ -13,15 +13,20 @@ import (
 	"github.com/aouxes/uptime-monitor/internal/checker"
 	"github.com/aouxes/uptime-monitor/internal/middleware"
 	"github.com/aouxes/uptime-monitor/internal/models"
+	"github.com/aouxes/uptime-monitor/internal/notifier"
 	"github.com/aouxes/uptime-monitor/internal/storage"
 )
 
 type SiteHandler struct {
-	storage *storage.Storage
+	storage  *storage.Storage
+	notifier *notifier.Notifier
 }
 
-func NewSiteHandler(storage *storage.Storage) *SiteHandler {
-	return &SiteHandler{storage: storage}
+func NewSiteHandler(storage *storage.Storage, notifier *notifier.Notifier) *SiteHandler {
+	return &SiteHandler{
+		storage:  storage,
+		notifier: notifier,
+	}
 }
 
 type AddSiteRequest struct {
@@ -357,12 +362,34 @@ func (h *SiteHandler) RefreshSites(w http.ResponseWriter, r *http.Request) {
 				status = "DOWN"
 			}
 
+			// Получаем старый статус для сравнения
+			oldSite, err := h.storage.GetSiteByID(ctx, s.ID)
+			if err != nil {
+				log.Printf("Failed to get old site status for %s: %v", s.URL, err)
+			}
+
 			// Обновляем статус в базе данных (используем оригинальный контекст для БД)
 			if err := h.storage.UpdateSiteStatus(ctx, s.ID, status); err != nil {
 				log.Printf("Failed to update site %s status: %v", s.URL, err)
 			} else {
 				log.Printf("Completed check for site %s: %s", s.URL, status)
 				atomic.AddInt64(&updatedCount, 1)
+
+				// Отправляем уведомление, если статус изменился
+				if oldSite != nil && oldSite.LastStatus != status {
+					log.Printf("Status changed for site %s: %s -> %s, sending notification", s.URL, oldSite.LastStatus, status)
+					if h.notifier != nil {
+						if err := h.notifier.NotifySiteStatusChange(ctx, s.ID, oldSite.LastStatus, status); err != nil {
+							log.Printf("Failed to send notification for site %s: %v", s.URL, err)
+						} else {
+							log.Printf("Notification sent for site %s status change", s.URL)
+						}
+					} else {
+						log.Printf("Notifier is nil, skipping notification for site %s", s.URL)
+					}
+				} else if oldSite != nil {
+					log.Printf("Status unchanged for site %s: %s", s.URL, status)
+				}
 			}
 		}(site)
 	}

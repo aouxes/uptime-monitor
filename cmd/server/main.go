@@ -13,7 +13,9 @@ import (
 	"github.com/aouxes/uptime-monitor/internal/config"
 	"github.com/aouxes/uptime-monitor/internal/handlers"
 	"github.com/aouxes/uptime-monitor/internal/middleware"
+	"github.com/aouxes/uptime-monitor/internal/notifier"
 	"github.com/aouxes/uptime-monitor/internal/storage"
+	"github.com/aouxes/uptime-monitor/internal/telegram"
 )
 
 func main() {
@@ -25,16 +27,33 @@ func main() {
 	defer db.Close()
 
 	// Создаем и запускаем checker с 20 workers
-	checker := checker.New(db, 5*time.Minute, 20)
+	checker := checker.New(db, 5*time.Minute, 20, cfg.TelegramToken)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	log.Printf("Starting background site checker with 20 workers...")
+	if cfg.TelegramToken != "" {
+		log.Printf("Telegram notifications enabled")
+
+		// Запускаем Telegram бот
+		bot := telegram.NewBot(cfg.TelegramToken, db)
+		go func() {
+			if err := bot.Start(ctx); err != nil {
+				log.Printf("Telegram bot error: %v", err)
+			}
+		}()
+		log.Printf("Telegram bot started")
+	} else {
+		log.Printf("Telegram notifications disabled (no token provided)")
+	}
 	go checker.Start(ctx)
+
+	// Создаем notifier для уведомлений
+	notifier := notifier.New(cfg.TelegramToken, db)
 
 	// Создаем обработчики
 	userHandler := handlers.NewUserHandler(db)
-	siteHandler := handlers.NewSiteHandler(db)
+	siteHandler := handlers.NewSiteHandler(db, notifier)
 
 	mux := http.NewServeMux()
 
@@ -63,6 +82,7 @@ func main() {
 	mux.Handle("GET /api/verify-token", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userHandler.VerifyToken(w, r, cfg.JWTSecret)
 	})))
+	mux.Handle("POST /api/telegram/link-code", middleware.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(userHandler.GenerateTelegramLinkCode)))
 
 	// Graceful shutdown
 	server := &http.Server{

@@ -131,6 +131,27 @@ body {
     background: var(--bg-card);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.telegram-btn {
+    background: #0088cc;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.telegram-btn:hover {
+    background: #006699;
+}
+
 .dashboard-content {
     display: grid;
     gap: 20px;
@@ -519,4 +540,233 @@ button:hover {
 
 .site-item.selected {
     transform: translateX(2px);
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-width: 600px;
+    width: 95%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-weight: 500;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.telegram-status {
+    text-align: center;
+    padding: 20px;
+}
+
+.telegram-link-section h4,
+.telegram-unlink-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.telegram-link-section ol {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.telegram-link-section li {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.telegram-link-section code {
+    background: var(--bg-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--accent);
+    font-weight: bold;
+    border: 1px solid var(--border);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 15px;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 15px;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.link-code-display {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.code-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+    min-width: 100%;
+}
+
+.code-box code {
+    flex: 1;
+    background: var(--bg-primary);
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    min-width: 0;
+}
+
+.copy-btn {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.code-expires {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 10px 0 0 0;
+    text-align: center;
+    font-style: italic;
+}
+
+/* Адаптивность для модального окна */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98%;
+        margin: 10px;
+        max-width: none;
+    }
+    
+    .modal-header,
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .code-box {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .code-box code {
+        font-size: 16px;
+        padding: 12px;
+        text-align: left;
+        white-space: nowrap;
+        overflow-x: auto;
+    }
+    
+    .copy-btn {
+        margin-top: 0;
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+    
+    .link-code-display {
+        padding: 15px;
+    }
+}
+
+/* Для больших экранов делаем модальное окно еще шире */
+@media (min-width: 900px) {
+    .modal-content {
+        max-width: 650px;
+        width: 90%;
+    }
 }

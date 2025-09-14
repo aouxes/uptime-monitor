@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/aouxes/uptime-monitor/internal/notifier"
 	"github.com/aouxes/uptime-monitor/internal/storage"
 )
 
@@ -13,13 +14,16 @@ type Checker struct {
 	storage    *storage.Storage
 	interval   time.Duration
 	workerPool *WorkerPool
+	notifier   *notifier.Notifier
 }
 
-func New(storage *storage.Storage, interval time.Duration, maxWorkers int) *Checker {
+func New(storage *storage.Storage, interval time.Duration, maxWorkers int, telegramToken string) *Checker {
+	notifier := notifier.New(telegramToken, storage)
 	return &Checker{
 		storage:    storage,
 		interval:   interval,
-		workerPool: NewWorkerPool(storage, maxWorkers),
+		workerPool: NewWorkerPool(storage, maxWorkers, notifier),
+		notifier:   notifier,
 	}
 }
 
