@@ -1,19 +1,29 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
+    "log"
+    "net/http"
+
+    "github.com/aouxes/uptime-monitor/internal/config"
+    "github.com/aouxes/uptime-monitor/internal/storage"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "<h1>Hello, World!</h1>\n")
-		fmt.Fprintf(w, "<p>UptimeMonitor is alive!</p>")
-	})
+    cfg := config.Load()
 
-	log.Println("Server starting on :8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("Server startup faild: ", err)
-	}
+    db, err := storage.New(cfg)
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
+    defer db.Close() 
+
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("<h1>Uptime Monitor is running!</h1>"))
+        w.Write([]byte("<p>Database connection: ✅ OK</p>"))
+    })
+
+    log.Printf("Server starting on :%s...", cfg.ServerPort)
+    if err := http.ListenAndServe(":"+cfg.ServerPort, nil); err != nil {
+        log.Fatalf("Server startup failed: %v", err)
+    }
 }
