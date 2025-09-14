@@ -8,70 +8,82 @@
 </head>
 <body>
     <div class="container">
+        <!-- Toast уведомления -->
+        <div id="toast-container"></div>
+
         <!-- Страница логина -->
         <div id="login-page" class="page active">
-            <h1>Uptime Monitor</h1>
-            <div class="form-container">
-                <h2>Вход</h2>
+            <div class="auth-card">
+                <h1>Uptime Monitor</h1>
                 <form id="login-form">
                     <input type="text" id="login-username" placeholder="Username" required>
                     <input type="password" id="login-password" placeholder="Password" required>
                     <button type="submit">Войти</button>
                 </form>
-                <p>Нет аккаунта? <a href="#" onclick="showPage('register-page')">Зарегистрироваться</a></p>
+                <p class="auth-switch">Нет аккаунта? <a href="#" onclick="showPage('register-page')">Зарегистрироваться</a></p>
             </div>
         </div>
 
         <!-- Страница регистрации -->
         <div id="register-page" class="page">
-            <h1>Uptime Monitor</h1>
-            <div class="form-container">
-                <h2>Регистрация</h2>
+            <div class="auth-card">
+                <h1>Создать аккаунт</h1>
                 <form id="register-form">
                     <input type="text" id="register-username" placeholder="Username" required>
                     <input type="email" id="register-email" placeholder="Email" required>
                     <input type="password" id="register-password" placeholder="Password" required>
                     <button type="submit">Зарегистрироваться</button>
                 </form>
-                <p>Уже есть аккаунт? <a href="#" onclick="showPage('login-page')">Войти</a></p>
+                <p class="auth-switch">Уже есть аккаунт? <a href="#" onclick="showPage('login-page')">Войти</a></p>
             </div>
         </div>
 
-        <!-- Дашборд (после логина) -->
+        <!-- Дашборд -->
         <div id="dashboard-page" class="page">
-            <header>
+            <header class="header">
                 <h1>Uptime Monitor</h1>
-                <button onclick="logout()">Выйти</button>
+                <button class="logout-btn" onclick="logout()">Выйти</button>
             </header>
 
-            <div class="dashboard">
-                <div class="add-site-form">
-                    <h2>Добавить сайт</h2>
+            <div class="dashboard-content">
+                <!-- Формы добавления -->
+                <div class="card">
+                    <h3>Добавить сайты</h3>
                     <form id="add-site-form">
                         <input type="url" id="site-url" placeholder="https://example.com" required>
-                        <button type="submit">Добавить один сайт</button>
+                        <button type="submit">Добавить</button>
                     </form>
                     
-                    <h3>Или массовое добавление</h3>
+                    <div class="divider">или</div>
+                    
                     <form id="bulk-add-form">
                         <textarea 
                             id="bulk-sites" 
-                            placeholder="Введите список сайтов (каждый с новой строки):&#10;https://site1.com&#10;https://site2.com&#10;https://site3.com" 
-                            rows="6"
+                            placeholder="Список URL (каждый с новой строки)"
+                            rows="4"
                             required
                         ></textarea>
-                        <button type="submit">Добавить все сайты</button>
+                        <button type="submit">Добавить все</button>
                     </form>
                 </div>
 
-                <div class="sites-list">
-                    <h2>Мои сайты</h2>
-                    <div id="sites-container"></div>
+                <!-- Список сайтов -->
+                <div class="card">
+                    <div class="sites-header">
+                        <h3>Мониторинг сайтов</h3>
+                        <div id="bulk-actions" class="bulk-actions">
+                            <span id="selected-count">0</span>
+                            <button class="danger-btn" onclick="deleteSelectedSites()">Удалить выбранные</button>
+                        </div>
+                    </div>
+                    
+                    <div id="sites-container" class="sites-list"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="/static/js/toast.js"></script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/sites.js"></script>
     <script>
@@ -87,6 +99,7 @@
             currentToken = null;
             localStorage.removeItem('token');
             showPage('login-page');
+            showToast('Вы вышли из системы', 'info');
         }
 
         // Проверяем авторизацию при загрузке

@@ -25,14 +25,14 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         });
 
         if (response.ok) {
-            alert('Регистрация успешна! Теперь войдите.');
+            showToast('Регистрация успешна! Теперь войдите.', 'success');
             showPage('login-page');
         } else {
             const error = await response.json();
-            alert('Ошибка: ' + (error.details ? JSON.stringify(error.details) : 'Registration failed'));
+            showToast('Ошибка регистрации: ' + (error.details ? JSON.stringify(error.details) : 'Unknown error'), 'error');
         }
     } catch (error) {
-        alert('Ошибка сети');
+        showToast('Ошибка сети', 'error');
     }
 });
 
@@ -56,13 +56,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const data = await response.json();
             currentToken = data.token;
             localStorage.setItem('token', data.token);
+            showToast('Вход выполнен успешно', 'success');
             showPage('dashboard-page');
             loadSites();
         } else {
-            alert('Неверный логин или пароль');
+            showToast('Неверный логин или пароль', 'error');
         }
     } catch (error) {
-        alert('Ошибка сети');
+        showToast('Ошибка сети', 'error');
     }
 });
 

@@ -227,3 +227,60 @@ func countSuccess(results []map[string]interface{}) int {
 	}
 	return count
 }
+
+type BulkDeleteSitesRequest struct {
+	SiteIDs []int `json:"site_ids"`
+}
+
+func (h *SiteHandler) BulkDeleteSites(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	var req BulkDeleteSitesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.SiteIDs) == 0 {
+		http.Error(w, "No site IDs provided", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	var results []map[string]interface{}
+	var successCount int
+
+	for _, siteID := range req.SiteIDs {
+		if err := h.storage.DeleteSite(ctx, siteID, userID); err != nil {
+			results = append(results, map[string]interface{}{
+				"site_id": siteID,
+				"status":  "error",
+				"message": err.Error(),
+			})
+		} else {
+			results = append(results, map[string]interface{}{
+				"site_id": siteID,
+				"status":  "success",
+			})
+			successCount++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Bulk delete completed",
+		"results": results,
+		"total":   len(req.SiteIDs),
+		"success": successCount,
+		"failed":  len(req.SiteIDs) - successCount,
+	})
+}
