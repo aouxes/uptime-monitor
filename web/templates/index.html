@@ -69,9 +69,21 @@
 
                 <!-- Список сайтов -->
                 <div class="card">
-                    <div class="sites-header">
-                        <h3>Мониторинг сайтов</h3>
-                        <div class="header-actions">
+                    <h3 class="sites-title">Мониторинг сайтов</h3>
+                    
+                    <div class="sites-controls">
+                        <div class="left-controls">
+                            <button id="filter-down-btn" class="filter-btn" onclick="toggleDownFilter()">
+                                <span class="filter-icon">🔍</span>
+                                Показать только DOWN
+                            </button>
+                            <button id="refresh-btn" class="refresh-btn" onclick="refreshSites()">
+                                <span class="refresh-icon">🔄</span>
+                                Обновить
+                            </button>
+                        </div>
+                        
+                        <div class="right-controls">
                             <div id="bulk-actions" class="bulk-actions">
                                 <span id="selected-count">0</span>
                                 <button class="danger-btn" onclick="deleteSelectedSites()">Удалить выбранные</button>

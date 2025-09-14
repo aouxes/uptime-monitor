@@ -20,17 +20,24 @@ async function fetchWithAuth(url, options = {}) {
 let allSites = [];
 let lastChecked = null;
 let selectedSites = new Set();
+let showOnlyDown = false;
 
 // Функция "Выбрать все"
 function toggleSelectAll(selectAllCheckbox) {
     const isChecked = selectAllCheckbox.checked;
     
+    // Получаем отфильтрованные сайты
+    let sitesToSelect = allSites;
+    if (showOnlyDown) {
+        sitesToSelect = allSites.filter(site => site.last_status?.toLowerCase() === 'down');
+    }
+    
     if (isChecked) {
-        // Выбираем все сайты
-        selectedSites = new Set(allSites.map(site => site.id));
+        // Выбираем все отфильтрованные сайты
+        sitesToSelect.forEach(site => selectedSites.add(site.id));
     } else {
-        // Снимаем выделение со всех сайтов
-        selectedSites.clear();
+        // Снимаем выделение со всех отфильтрованных сайтов
+        sitesToSelect.forEach(site => selectedSites.delete(site.id));
     }
     
     // Обновляем чекбоксы и стили
@@ -51,10 +58,19 @@ function updateSelectAllCheckbox() {
     const selectAllCheckbox = document.getElementById('select-all-checkbox');
     if (!selectAllCheckbox) return;
     
-    if (selectedSites.size === 0) {
+    // Получаем отфильтрованные сайты
+    let filteredSites = allSites;
+    if (showOnlyDown) {
+        filteredSites = allSites.filter(site => site.last_status?.toLowerCase() === 'down');
+    }
+    
+    // Подсчитываем количество выбранных отфильтрованных сайтов
+    const selectedFilteredCount = filteredSites.filter(site => selectedSites.has(site.id)).length;
+    
+    if (selectedFilteredCount === 0) {
         selectAllCheckbox.checked = false;
         selectAllCheckbox.indeterminate = false;
-    } else if (selectedSites.size === allSites.length) {
+    } else if (selectedFilteredCount === filteredSites.length) {
         selectAllCheckbox.checked = true;
         selectAllCheckbox.indeterminate = false;
     } else {
@@ -63,13 +79,77 @@ function updateSelectAllCheckbox() {
     }
 }
 
+// Функция переключения фильтра DOWN сайтов
+function toggleDownFilter() {
+    showOnlyDown = !showOnlyDown;
+    const filterBtn = document.getElementById('filter-down-btn');
+    
+    if (showOnlyDown) {
+        filterBtn.classList.add('active');
+        filterBtn.innerHTML = '<span class="filter-icon">❌</span> Показать все';
+    } else {
+        filterBtn.classList.remove('active');
+        filterBtn.innerHTML = '<span class="filter-icon">🔍</span> Показать только DOWN';
+    }
+    
+    // Перерисовываем сайты с учетом фильтра
+    displaySites(allSites);
+}
+
+// Функция обновления статуса сайтов
+async function refreshSites() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+    
+    // Показываем анимацию загрузки
+    refreshBtn.disabled = true;
+    refreshIcon.style.animation = 'spin 1s linear infinite';
+    
+    try {
+        // Запрашиваем обновление статусов
+        const response = await fetchWithAuth('/api/sites/refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showToast(`Обновлено ${result.updated} из ${result.total} сайтов`, 'success');
+            // Перезагружаем список сайтов
+            await loadSites();
+        } else {
+            showToast('Ошибка при обновлении статусов', 'error');
+        }
+    } catch (error) {
+        if (error.message !== 'Authentication failed') {
+            showToast('Ошибка сети', 'error');
+        }
+    } finally {
+        // Убираем анимацию загрузки
+        refreshBtn.disabled = false;
+        refreshIcon.style.animation = '';
+    }
+}
+
 // Отображение сайтов
 function displaySites(sites) {
     allSites = sites;
     const container = document.getElementById('sites-container');
     
-    if (sites.length === 0) {
-        container.innerHTML = '<div class="no-sites">Нет добавленных сайтов</div>';
+    // Фильтруем сайты если включен фильтр DOWN
+    let filteredSites = sites;
+    if (showOnlyDown) {
+        filteredSites = sites.filter(site => site.last_status?.toLowerCase() === 'down');
+    }
+    
+    if (filteredSites.length === 0) {
+        if (showOnlyDown && sites.length > 0) {
+            container.innerHTML = '<div class="no-sites">Нет DOWN сайтов</div>';
+        } else {
+            container.innerHTML = '<div class="no-sites">Нет добавленных сайтов</div>';
+        }
         document.getElementById('bulk-actions').classList.remove('visible');
         document.getElementById('select-all-checkbox').disabled = true;
         return;
@@ -77,7 +157,7 @@ function displaySites(sites) {
 
     document.getElementById('select-all-checkbox').disabled = false;
 
-    container.innerHTML = sites.map(site => `
+    container.innerHTML = filteredSites.map(site => `
         <div class="site-item ${selectedSites.has(site.id) ? 'selected' : ''}" 
              onclick="handleSiteClick(${site.id}, event)">
             <input 

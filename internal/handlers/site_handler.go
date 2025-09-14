@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/aouxes/uptime-monitor/internal/checker"
 	"github.com/aouxes/uptime-monitor/internal/middleware"
 	"github.com/aouxes/uptime-monitor/internal/models"
 	"github.com/aouxes/uptime-monitor/internal/storage"
@@ -282,5 +286,96 @@ func (h *SiteHandler) BulkDeleteSites(w http.ResponseWriter, r *http.Request) {
 		"total":   len(req.SiteIDs),
 		"success": successCount,
 		"failed":  len(req.SiteIDs) - successCount,
+	})
+}
+
+// RefreshSites обновляет статусы всех сайтов пользователя
+func (h *SiteHandler) RefreshSites(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	// Получаем все сайты пользователя
+	sites, err := h.storage.GetUserSites(ctx, userID)
+	if err != nil {
+		log.Printf("Failed to get user sites for refresh: %v", err)
+		http.Error(w, "Failed to get sites", http.StatusInternalServerError)
+		return
+	}
+
+	if len(sites) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "No sites to refresh",
+			"count":   0,
+		})
+		return
+	}
+
+	// Асинхронно обновляем статусы всех сайтов пользователя
+	maxConcurrency := 10
+	log.Printf("Starting manual refresh for user %d: %d sites (max concurrency: %d)", userID, len(sites), maxConcurrency)
+
+	var wg sync.WaitGroup
+	var updatedCount int64
+
+	// Создаем канал для ограничения количества одновременных проверок
+	semaphore := make(chan struct{}, maxConcurrency)
+
+	for _, site := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+
+			// Получаем разрешение на выполнение
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			log.Printf("Starting check for site %s", s.URL)
+
+			// Создаем отдельный контекст с timeout для каждой проверки
+			siteCtx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+			defer cancel()
+
+			// Используем статический метод CheckSite для проверки
+			status, err := checker.CheckSite(siteCtx, s.URL)
+			if err != nil {
+				if siteCtx.Err() == context.DeadlineExceeded {
+					log.Printf("Timeout checking site %s (12s)", s.URL)
+				} else {
+					log.Printf("Failed to check site %s: %v", s.URL, err)
+				}
+				status = "DOWN"
+			}
+
+			// Обновляем статус в базе данных (используем оригинальный контекст для БД)
+			if err := h.storage.UpdateSiteStatus(ctx, s.ID, status); err != nil {
+				log.Printf("Failed to update site %s status: %v", s.URL, err)
+			} else {
+				log.Printf("Completed check for site %s: %s", s.URL, status)
+				atomic.AddInt64(&updatedCount, 1)
+			}
+		}(site)
+	}
+
+	// Ждем завершения всех горутин
+	wg.Wait()
+
+	log.Printf("Manual refresh completed: %d/%d sites updated", updatedCount, len(sites))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Sites refreshed successfully",
+		"total":   len(sites),
+		"updated": int(updatedCount),
 	})
 }

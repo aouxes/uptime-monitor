@@ -29,10 +29,12 @@ func (wp *WorkerPool) ProcessSites(ctx context.Context, sites []models.Site) {
 	var wg sync.WaitGroup
 	sitesCh := make(chan models.Site, len(sites))
 
+	log.Printf("Starting %d workers for parallel site checking...", wp.maxWorkers)
+
 	// Запускаем worker'ов
 	for i := 0; i < wp.maxWorkers; i++ {
 		wg.Add(1)
-		go wp.worker(ctx, &wg, sitesCh)
+		go wp.worker(ctx, &wg, sitesCh, i+1)
 	}
 
 	// Отправляем сайты в канал
@@ -42,9 +44,10 @@ func (wp *WorkerPool) ProcessSites(ctx context.Context, sites []models.Site) {
 	close(sitesCh)
 
 	wg.Wait()
+	log.Printf("All workers completed processing %d sites", len(sites))
 }
 
-func (wp *WorkerPool) worker(ctx context.Context, wg *sync.WaitGroup, sitesCh <-chan models.Site) {
+func (wp *WorkerPool) worker(ctx context.Context, wg *sync.WaitGroup, sitesCh <-chan models.Site, workerID int) {
 	defer wg.Done()
 
 	for site := range sitesCh {
@@ -52,25 +55,33 @@ func (wp *WorkerPool) worker(ctx context.Context, wg *sync.WaitGroup, sitesCh <-
 		case <-ctx.Done():
 			return
 		default:
-			wp.processSite(ctx, site)
+			wp.processSite(ctx, site, workerID)
 		}
 	}
 }
 
 // processSite обрабатывает один сайт
-func (wp *WorkerPool) processSite(ctx context.Context, site models.Site) {
+func (wp *WorkerPool) processSite(ctx context.Context, site models.Site, workerID int) {
 	ctx, cancel := context.WithTimeout(ctx, wp.checkTimeout)
 	defer cancel()
+
+	log.Printf("Worker %d: Checking site %s", workerID, site.URL)
 
 	// Вызываем статический метод CheckSite
 	status, err := CheckSite(ctx, site.URL)
 	if err != nil {
-		log.Printf("❌ Failed to check site %s: %v", site.URL, err)
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("Worker %d: Timeout checking site %s (%v)", workerID, site.URL, wp.checkTimeout)
+		} else {
+			log.Printf("Worker %d: Failed to check site %s: %v", workerID, site.URL, err)
+		}
 		status = "DOWN"
+	} else {
+		log.Printf("Worker %d: Site %s is %s", workerID, site.URL, status)
 	}
 
 	if err := wp.storage.UpdateSiteStatus(ctx, site.ID, status); err != nil {
-		log.Printf("Failed to update site %s: %v", site.URL, err)
+		log.Printf("Worker %d: Failed to update site %s status: %v", workerID, site.URL, err)
 	}
 }
 
@@ -78,7 +89,12 @@ func CheckSite(ctx context.Context, url string) (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	start := time.Now()
-	resp, err := client.Head(url)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", url, nil)
+	if err != nil {
+		return "DOWN", err
+	}
+
+	resp, err := client.Do(req)
 	checkTime := time.Since(start)
 
 	if err != nil {

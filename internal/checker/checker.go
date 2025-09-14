@@ -33,8 +33,12 @@ func (c *Checker) CheckAllSites(ctx context.Context) error {
 	}
 
 	log.Printf("Found %d sites for checking", len(sites))
-	c.workerPool.ProcessSites(ctx, sites)
-	log.Printf("Sites check completed")
+
+	// Запускаем проверку асинхронно, не блокируя основной поток
+	go func() {
+		c.workerPool.ProcessSites(ctx, sites)
+		log.Printf("Sites check completed")
+	}()
 
 	return nil
 }

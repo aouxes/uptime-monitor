@@ -221,11 +221,30 @@ button:hover {
 }
 
 /* Список сайтов */
-.sites-header {
+.sites-title {
+    margin-bottom: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.sites-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    gap: 20px;
+}
+
+.left-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.right-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
 }
 
 .bulk-actions {
@@ -347,11 +366,80 @@ button:hover {
     }
 }
 
-/* Стили для заголовка и действий */
-.header-actions {
+/* Стили для фильтра */
+
+.filter-btn {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background: var(--bg-card);
+    border-color: var(--accent);
+}
+
+.filter-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.filter-btn.active:hover {
+    background: var(--accent);
+    opacity: 0.9;
+}
+
+.filter-icon {
+    font-size: 16px;
+}
+
+/* Стили для кнопки обновления */
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+    background: var(--bg-card);
+    border-color: var(--accent);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.refresh-btn:disabled:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
+.refresh-icon {
+    font-size: 16px;
+}
+
+/* Анимация вращения для иконки обновления */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .select-all {
@@ -384,10 +472,26 @@ button:hover {
 
 /* Адаптивность для мобильных */
 @media (max-width: 768px) {
-    .header-actions {
+    .sites-controls {
         flex-direction: column;
         gap: 15px;
         align-items: stretch;
+    }
+    
+    .left-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .right-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn, .refresh-btn {
+        flex: 1;
+        min-width: 140px;
+        justify-content: center;
     }
     
     .select-all {
