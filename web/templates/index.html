@@ -71,9 +71,15 @@
                 <div class="card">
                     <div class="sites-header">
                         <h3>Мониторинг сайтов</h3>
-                        <div id="bulk-actions" class="bulk-actions">
-                            <span id="selected-count">0</span>
-                            <button class="danger-btn" onclick="deleteSelectedSites()">Удалить выбранные</button>
+                        <div class="header-actions">
+                            <div id="bulk-actions" class="bulk-actions">
+                                <span id="selected-count">0</span>
+                                <button class="danger-btn" onclick="deleteSelectedSites()">Удалить выбранные</button>
+                            </div>
+                            <div class="select-all">
+                                <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)">
+                                <label for="select-all-checkbox">Выбрать все</label>
+                            </div>
                         </div>
                     </div>
                     

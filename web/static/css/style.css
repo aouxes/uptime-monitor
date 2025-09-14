@@ -215,7 +215,7 @@ button:hover {
 .divider::after {
     content: '';
     position: relative;
-    z-index: 2;
+    z-index: 0;
     background: var(--bg-card);
     padding: 0 10px;
 }
@@ -252,7 +252,7 @@ button:hover {
 
 .site-item {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: 15px;
     padding: 12px 16px;
@@ -260,25 +260,40 @@ button:hover {
     border: 1px solid var(--border);
     border-radius: 4px;
     transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
 }
 
 .site-item:hover {
     background: var(--bg-card);
+    border-color: var(--accent);
 }
 
 .site-item.selected {
     border-color: var(--accent);
-    background: rgba(87, 148, 242, 0.1);
+    background: rgba(87, 148, 242, 0.15);
+}
+
+.site-item.selected::before {
+    content: '✓';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-weight: bold;
 }
 
 .site-checkbox {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
 .site-info {
     min-width: 0;
+    margin-left: 20px; /* Отступ для галочки selection */
 }
 
 .site-url {
@@ -311,34 +326,93 @@ button:hover {
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .container {
-        padding: 10px;
+    .site-item {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
     }
     
-    .auth-card {
-        margin: 50px auto;
-        padding: 30px 20px;
+    .site-actions {
+        grid-column: 1;
+        justify-content: flex-end;
     }
     
-    .header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
+    .site-info {
+        margin-left: 0;
     }
     
-    .sites-header {
+    .site-item.selected::before {
+        left: 8px;
+        top: 12px;
+        transform: none;
+    }
+}
+
+/* Стили для заголовка и действий */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+
+}
+
+.select-all input[type="checkbox"] {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.select-all label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.select-all:hover {
+    background: var(--bg-card);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .header-actions {
         flex-direction: column;
         gap: 15px;
         align-items: stretch;
     }
     
-    .site-item {
-        grid-template-columns: auto 1fr;
-        grid-template-rows: auto auto;
+    .select-all {
+        justify-content: center;
     }
-    
-    .site-actions {
-        grid-column: 1 / -1;
-        justify-content: flex-end;
-    }
+}
+
+.site-item.selected::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 5px;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center/12px no-repeat;
+}
+
+/* Анимация при выборе */
+.site-item {
+    transition: all 0.15s ease;
+}
+
+.site-item.selected {
+    transform: translateX(2px);
 }

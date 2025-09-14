@@ -103,11 +103,7 @@ if (currentToken) {
 
 async function loadSites() {
     try {
-        const response = await fetchWithAuth('/api/sites', {
-            headers: {
-                'Authorization': 'Bearer ' + currentToken
-            }
-        });
+        const response = await fetchWithAuth('/api/sites');
 
         if (response.ok) {
             const data = await response.json();
