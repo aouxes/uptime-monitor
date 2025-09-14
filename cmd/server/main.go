@@ -28,6 +28,7 @@ func main() {
 
 	protected := http.NewServeMux()
 	protected.HandleFunc("POST /api/sites", siteHandler.AddSite)
+	protected.HandleFunc("GET /api/sites", siteHandler.GetSites)
 
 	http.Handle("/api/", middleware.AuthMiddleware(cfg.JWTSecret)(protected))
 
