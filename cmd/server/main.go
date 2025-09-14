@@ -24,7 +24,7 @@ func main() {
 	}
 	defer db.Close()
 
-	checker := checker.New(db, 5*time.Minute)
+	checker := checker.New(db, 5*time.Minute, 20)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
