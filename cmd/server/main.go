@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 
 	"github.com/aouxes/uptime-monitor/internal/config"
-	"github.com/aouxes/uptime-monitor/internal/models"
+	"github.com/aouxes/uptime-monitor/internal/handlers"
 	"github.com/aouxes/uptime-monitor/internal/storage"
 )
 
@@ -18,25 +17,13 @@ func main() {
 	}
 	defer db.Close()
 
-	// ТЕСТ: Создаем test user
-	ctx := context.Background()
-	testUser := &models.User{
-		Username:     "testuser",
-		Email:        "test@example.com",
-		PasswordHash: "hashed_password_123", // Пока просто заглушка
-	}
+	userHandler := handlers.NewUserHandler(db)
 
-	if err := db.CreateUser(ctx, testUser); err != nil {
-		log.Printf("Warning: Failed to create test user: %v", err)
-	} else {
-		log.Printf("Test user created: ID=%d", testUser.ID)
-	}
+	http.HandleFunc("POST /api/register", userHandler.Register)
 
-	// Запускаем сервер
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<h1>Uptime Monitor is running!</h1>"))
-		w.Write([]byte("<p>Database connection: ✅ OK</p>"))
-		w.Write([]byte("<p>Try to create a user via API soon!</p>"))
+	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<h1>Uptime Monitor API</h1>"))
+		w.Write([]byte("<p>Use POST /api/register to create user</p>"))
 	})
 
 	log.Printf("Server starting on :%s...", cfg.ServerPort)
