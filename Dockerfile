@@ -1,5 +1,5 @@
 # Multi-stage build для оптимизации размера образа
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25.1-alpine AS builder
 
 # Установка необходимых пакетов
 RUN apk add --no-cache git ca-certificates tzdata

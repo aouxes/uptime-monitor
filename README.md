@@ -100,7 +100,7 @@ uptime-monitor/
 
 ## Технологии
 
-- **Backend:** Go, PostgreSQL, JWT
+- **Backend:** Go 1.25.1, PostgreSQL, JWT
 - **Frontend:** HTML, CSS, JavaScript
 - **Telegram:** Bot API
 - **Deployment:** Docker, Docker Compose

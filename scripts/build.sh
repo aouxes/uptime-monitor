@@ -8,13 +8,13 @@ echo "🚀 Сборка Uptime Monitor..."
 
 # Проверка наличия Go
 if ! command -v go &> /dev/null; then
-    echo "❌ Go не установлен. Установите Go 1.21+ и попробуйте снова."
+    echo "❌ Go не установлен. Установите Go 1.25.1+ и попробуйте снова."
     exit 1
 fi
 
 # Проверка версии Go
 GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-REQUIRED_VERSION="1.21"
+REQUIRED_VERSION="1.25.1"
 
 if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$GO_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
     echo "❌ Требуется Go версии $REQUIRED_VERSION или выше. Текущая версия: $GO_VERSION"
